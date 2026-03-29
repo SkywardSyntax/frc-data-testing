@@ -1,0 +1,185 @@
+
+<div id="w3d" style="position:relative;width:100%;height:540px;border-radius:var(--border-radius-lg);border:0.5px solid var(--color-border-tertiary);overflow:hidden;">
+  <canvas id="c3d" style="display:block;"></canvas>
+  <div id="tt3d" style="position:absolute;display:none;background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--color-text-primary);pointer-events:none;z-index:10;max-width:195px;line-height:1.75;"></div>
+  <div style="position:absolute;top:12px;right:14px;font-size:11px;color:var(--color-text-secondary);line-height:2;text-align:right;">
+    <div><span style="color:#378ADD;font-weight:500;">X →</span> Isolated Impact</div>
+    <div><span style="color:#D85A30;font-weight:500;">Y ↑</span> Synergy Coeff.</div>
+    <div><span style="color:#1D9E75;font-weight:500;">Z ↗</span> Consistency</div>
+    <div style="margin-top:5px;display:flex;align-items:center;gap:5px;justify-content:flex-end;">
+      <span style="width:11px;height:11px;background:rgba(80,210,130,0.28);border:1px solid rgba(80,210,130,0.55);display:inline-block;border-radius:2px;"></span>
+      <span>first octant — ideal</span>
+    </div>
+    <div style="margin-top:3px;font-size:10px;color:var(--color-text-tertiary);">● size = EPA · drag = rotate · scroll = zoom</div>
+  </div>
+  <div style="position:absolute;bottom:11px;left:14px;font-size:10px;color:var(--color-text-tertiary);">2026txman · 27 teams</div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const TEAMS=[
+  {team:2583,name:"Orange Dynamite",epa:127.28,x:185.46,y:0.2842,z:0.7824},
+  {team:6800,name:"Valor",epa:173.83,x:184.71,y:-0.6099,z:0.64},
+  {team:118,name:"Robonauts",epa:152.99,x:173.14,y:2.3747,z:0.6667},
+  {team:5572,name:"Rosbots",epa:87.25,x:115.0,y:0.6708,z:0.4913},
+  {team:6377,name:"Howdy Bots",epa:79.26,x:102.95,y:0.624,z:0.4056},
+  {team:436,name:"Purple Rain",epa:53.42,x:79.47,y:0.3151,z:0.4597},
+  {team:5892,name:"Energy HEROs",epa:55.67,x:63.39,y:1.1368,z:0.4213},
+  {team:418,name:"Purple Haze",epa:60.51,x:60.14,y:-0.0478,z:0.1526},
+  {team:1255,name:"Blarglefish",epa:45.71,x:57.18,y:1.7075,z:0.3024},
+  {team:9506,name:"Conspiracy Robotics",epa:45.29,x:54.21,y:-0.1608,z:0.1851},
+  {team:5103,name:"MECH&Cheese",epa:31.43,x:45.2,y:-0.1951,z:0},
+  {team:6901,name:"Knights Robotics",epa:33.05,x:44.66,y:0.8853,z:0.0382},
+  {team:6243,name:"Energy NERDs",epa:25.07,x:41.06,y:-0.0762,z:0},
+  {team:7088,name:"Somerset Robodogs",epa:35.43,x:39.21,y:0.7648,z:0},
+  {team:3545,name:"Bots in Blue",epa:29.79,x:38.36,y:0.1396,z:0},
+  {team:6180,name:"Mechanical Lions",epa:31.34,x:38.08,y:0.6511,z:0.167},
+  {team:9577,name:"Recoil",epa:30.07,x:37.93,y:0.1271,z:0.1296},
+  {team:2587,name:"DiscoBots",epa:41.45,x:35.23,y:-0.5734,z:0},
+  {team:9140,name:"The Robobots",epa:41.47,x:34.66,y:-0.1021,z:0},
+  {team:10913,name:"Robot Wranglers",epa:30.11,x:31.28,y:1.2385,z:0},
+  {team:8573,name:"Rogue-Rangers LEGACY",epa:19.12,x:27.83,y:0.3465,z:0},
+  {team:8750,name:"Tarpontron1cs",epa:21.31,x:27.54,y:-0.2079,z:0},
+  {team:2789,name:"TEXPLOSION",epa:30.47,x:24.69,y:-0.3801,z:0.0325},
+  {team:11309,name:"Gear Owls",epa:16.02,x:22.85,y:0.7305,z:0},
+  {team:7138,name:"Wing It",epa:19.84,x:20.74,y:-0.2414,z:0},
+  {team:4076,name:"Texan Robotics",epa:19.4,x:18.3,y:-1.2617,z:0},
+  {team:11224,name:"Azreal",epa:22.66,x:14.96,y:1.4238,z:0}
+];
+
+const wrap=document.getElementById('w3d');
+const canvas=document.getElementById('c3d');
+const tooltip=document.getElementById('tt3d');
+const W=wrap.offsetWidth||640, H=540;
+canvas.style.width=W+'px'; canvas.style.height=H+'px';
+
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
+renderer.setSize(W,H); renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.setClearColor(0x000000,0);
+
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(50,W/H,0.01,100);
+camera.position.set(3.2,3.2,8.5);
+camera.lookAt(0,0,0);
+
+const sx=v=>v/50;   // 0-200 → 0-4
+const sy=v=>v;      // synergy as-is
+const sz=v=>v*3;    // 0-1 → 0-3
+
+const pivot=new THREE.Group();
+scene.add(pivot);
+const grp=new THREE.Group();
+grp.position.set(-2,-0.5,-1.5);
+pivot.add(grp);
+
+let pRotX=-0.22, pRotY=0.48;
+pivot.rotation.x=pRotX; pivot.rotation.y=pRotY;
+
+const BW=4,BH=2.5,BD=3;
+const octGeo=new THREE.BoxGeometry(BW,BH,BD);
+
+const octFill=new THREE.Mesh(octGeo,new THREE.MeshBasicMaterial({
+  color:0x50d890,transparent:true,opacity:0.09,side:THREE.DoubleSide,depthWrite:false
+}));
+octFill.position.set(BW/2,BH/2,BD/2);
+grp.add(octFill);
+
+const octEdge=new THREE.LineSegments(
+  new THREE.EdgesGeometry(octGeo),
+  new THREE.LineBasicMaterial({color:0x50d890,transparent:true,opacity:0.38})
+);
+octEdge.position.copy(octFill.position);
+grp.add(octEdge);
+
+const addLine=(ax,ay,az,bx,by,bz,col)=>{
+  const geo=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(ax,ay,az),new THREE.Vector3(bx,by,bz)]);
+  grp.add(new THREE.Line(geo,new THREE.LineBasicMaterial({color:col})));
+};
+addLine(0,0,0, 4.6,0,0, 0x378ADD);
+addLine(0,-1.6,0, 0,2.8,0, 0xD85A30);
+addLine(0,0,0, 0,0,3.4, 0x1D9E75);
+addLine(0,0,0, -0.3,0,0, 0x378ADD);
+
+const grid=new THREE.GridHelper(5,10,0x888888,0x888888);
+grid.material.opacity=0.1; grid.material.transparent=true;
+grid.position.set(2.5,0,1.5);
+grp.add(grid);
+
+const spheres=[];
+const EMIN=16,EMAX=174;
+TEAMS.forEach(t=>{
+  const n=(t.epa-EMIN)/(EMAX-EMIN);
+  const r=0.055+n*0.19;
+  const cr=(136+n*(55-136))/255;
+  const cg=(135+n*(138-135))/255;
+  const cb=(128+n*(221-128))/255;
+  const mesh=new THREE.Mesh(
+    new THREE.SphereGeometry(r,18,12),
+    new THREE.MeshPhongMaterial({color:new THREE.Color(cr,cg,cb),shininess:55})
+  );
+  mesh.position.set(sx(t.x),sy(t.y),sz(t.z));
+  mesh.userData=t;
+  grp.add(mesh);
+  spheres.push(mesh);
+});
+
+scene.add(new THREE.AmbientLight(0xffffff,0.65));
+const dl=new THREE.DirectionalLight(0xffffff,0.7);
+dl.position.set(6,8,6); scene.add(dl);
+const dl2=new THREE.DirectionalLight(0xffffff,0.25);
+dl2.position.set(-4,2,-3); scene.add(dl2);
+
+let isDrag=false, pX=0, pY=0;
+canvas.addEventListener('mousedown',e=>{isDrag=true;pX=e.clientX;pY=e.clientY;});
+window.addEventListener('mouseup',()=>isDrag=false);
+canvas.addEventListener('mouseleave',()=>{isDrag=false;tooltip.style.display='none';});
+
+window.addEventListener('mousemove',e=>{
+  if(isDrag){
+    pRotY+=(e.clientX-pX)*0.008;
+    pRotX+=(e.clientY-pY)*0.008;
+    pivot.rotation.y=pRotY; pivot.rotation.x=pRotX;
+    pX=e.clientX; pY=e.clientY;
+    tooltip.style.display='none';
+  }
+});
+
+canvas.addEventListener('mousemove',e=>{
+  if(isDrag) return;
+  const rect=canvas.getBoundingClientRect();
+  if(!rect.width) return;
+  const mx=((e.clientX-rect.left)/rect.width)*2-1;
+  const my=-((e.clientY-rect.top)/rect.height)*2+1;
+  const ray=new THREE.Raycaster();
+  ray.setFromCamera(new THREE.Vector2(mx,my),camera);
+  const hits=ray.intersectObjects(spheres);
+  if(hits.length){
+    const d=hits[0].object.userData;
+    tooltip.style.display='block';
+    const lx=e.clientX-rect.left;
+    const ly=e.clientY-rect.top;
+    tooltip.style.left=Math.min(lx+14,rect.width-205)+'px';
+    tooltip.style.top=Math.max(ly-90,8)+'px';
+    tooltip.innerHTML=`<span style="font-weight:500;">${d.team} ${d.name}</span><br>EPA: ${d.epa.toFixed(1)}<br>Impact: ${d.x.toFixed(1)}<br>Synergy: ${d.y.toFixed(3)}<br>Consistency: ${d.z.toFixed(3)}`;
+  } else {
+    tooltip.style.display='none';
+  }
+});
+
+canvas.addEventListener('wheel',e=>{
+  e.preventDefault();
+  camera.position.multiplyScalar(e.deltaY>0?1.08:0.93);
+},{passive:false});
+
+canvas.addEventListener('touchstart',e=>{isDrag=true;pX=e.touches[0].clientX;pY=e.touches[0].clientY;e.preventDefault();},{passive:false});
+canvas.addEventListener('touchmove',e=>{
+  if(!isDrag) return;
+  pRotY+=(e.touches[0].clientX-pX)*0.008;
+  pRotX+=(e.touches[0].clientY-pY)*0.008;
+  pivot.rotation.y=pRotY; pivot.rotation.x=pRotX;
+  pX=e.touches[0].clientX; pY=e.touches[0].clientY;
+  e.preventDefault();
+},{passive:false});
+canvas.addEventListener('touchend',()=>isDrag=false);
+
+(function animate(){requestAnimationFrame(animate);renderer.render(scene,camera);})();
+</script>
